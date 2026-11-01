@@ -1,0 +1,8 @@
+go 1.22
+
+use (
+	./pkg/models
+	./services/api-gateway
+	./services/scan-worker
+	./services/oob-listener
+)

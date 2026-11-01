@@ -1,0 +1,49 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vyomite-scan-worker-scaler
+  namespace: vyomite-dast
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vyomite-scan-worker
+  minReplicaCount: 1     # 0 pending jobs: 1 minimum standby pod (Part 4.2)
+  maxReplicaCount: 50    # Hard cap: 50 pods (Part 4.2)
+  cooldownPeriod: 300    # 5 minutes stabilization before downscaling
+  pollingInterval: 15    # Check queue depth every 15 seconds
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 20
+              periodSeconds: 60
+  triggers:
+    - type: rabbitmq
+      metadata:
+        queueName: scan_jobs
+        mode: QueueLength
+        value: "5"      # 1 pod per 5 jobs after 10+ pending jobs (Part 4.2)
+        activationValue: "10"
+      authenticationRef:
+        name: keda-rabbitmq-auth
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-rabbitmq-auth
+  namespace: vyomite-dast
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: rabbitmq-credentials
+      key: connection_string

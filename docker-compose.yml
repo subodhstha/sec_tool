@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # Infrastructure: Message Broker (RabbitMQ)
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: vyomite-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: vyomite
+      RABBITMQ_DEFAULT_PASS: vyomite_secret
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Infrastructure: OOB Cache (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: vyomite-redis
+    ports:
+      - "6379:6379"
+
+  # Infrastructure: Relational Store (PostgreSQL 15+)
+  postgres:
+    image: postgres:15-alpine
+    container_name: vyomite-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: vyomite
+      POSTGRES_PASSWORD: vyomite_password
+      POSTGRES_DB: vyomite_dast
+
+  # Microservice 1: API Gateway (Go)
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: vyomite-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      ENV: development
+    depends_on:
+      - rabbitmq
+      - postgres
+
+  # Microservice 2: Scan Worker Engine (Go)
+  scan-worker:
+    build:
+      context: .
+      dockerfile: services/scan-worker/Dockerfile
+    container_name: vyomite-scan-worker
+    environment:
+      CRAWLER_SERVICE_URL: http://crawler:3001
+      OOB_LISTENER_URL: http://oob-listener:8082
+    depends_on:
+      - api-gateway
+      - crawler
+      - oob-listener
+
+  # Microservice 3: Headless DOM Crawler (Node.js/Playwright)
+  crawler:
+    build:
+      context: ./services/crawler
+      dockerfile: Dockerfile
+    container_name: vyomite-crawler
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+
+  # Microservice 4: Out-of-Band Listener (Go)
+  oob-listener:
+    build:
+      context: .
+      dockerfile: services/oob-listener/Dockerfile
+    container_name: vyomite-oob-listener
+    ports:
+      - "8082:8082"
+    depends_on:
+      - redis
+
+  # Microservice 5: Web Dashboard (Next.js + React)
+  dashboard:
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile
+    container_name: vyomite-dashboard
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
